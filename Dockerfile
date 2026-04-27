@@ -13,13 +13,10 @@ RUN apk add --no-cache \
     php82-mysqli \
     php82-openssl \
     php82-curl \
-    php82-zlib \
     php82-xml \
-    php82-phar \
     php82-intl \
     php82-dom \
     php82-xmlreader \
-    php82-ctype \
     php82-session \
     php82-mbstring \
     php82-tokenizer \
