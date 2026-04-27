@@ -33,25 +33,44 @@ PHP_FPM_CONF="/home/container/.conf/php-fpm.conf"
 
 generate_template() {
     echo -e "${CYAN}[SYSTEM]${NC} Generating $1 starter files..."
+    cd /home/container/files
     case $1 in
         html)
-            cat <<EOF > /home/container/files/index.html
-<h1>YuraCloud Online</h1><p>Static HTML is working.</p>
+            cat <<EOF > index.html
+<!DOCTYPE html>
+<html><head><title>YuraCloud HTML</title></head>
+<body style="background:#0f172a;color:white;text-align:center;padding-top:50px;">
+<h1>YuraCloud HTML Online</h1><p>Static site is working.</p>
+</body></html>
 EOF
             ;;
         php)
-            cat <<EOF > /home/container/files/index.php
+            cat <<EOF > index.php
 <?php echo "<h1>YuraCloud PHP Online</h1>"; phpinfo(); ?>
 EOF
             ;;
         node|nodejs|react|nextjs)
-            cat <<EOF > /home/container/files/index.js
+            # Create package.json for Node-based apps
+            cat <<EOF > package.json
+{
+  "name": "yuracloud-web",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {}
+}
+EOF
+            # Create index.js
+            cat <<EOF > index.js
 const http = require('http');
-http.createServer((req, res) => {
+const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/html' });
-  res.end('<h1>YuraCloud Node/React Online</h1><p>Server running on port 3000</p>');
-}).listen(3000, '0.0.0.0');
-console.log('Server running on port 3000');
+  res.end('<body style="background:#0f172a;color:white;text-align:center;"><h1>YuraCloud Node/React Online</h1><p>Server running on port 3000</p></body>');
+});
+server.listen(3000, '0.0.0.0', () => { console.log('Server ready on port 3000'); });
 EOF
             ;;
     esac
@@ -100,7 +119,7 @@ start_web() {
     pkill -9 nginx php node 2>/dev/null
     rm -rf /home/container/logs/nginx.pid 2>/dev/null
 
-    # Nginx Config (No SSL, Clean Proxy)
+    # Nginx Config
     cat <<EOF > "$NGINX_CONF"
 worker_processes auto;
 pid /home/container/logs/nginx.pid;
@@ -110,19 +129,16 @@ http {
     sendfile on;
     access_log /home/container/logs/access.log;
     error_log /home/container/logs/error.log;
-    
     server {
         listen ${PORT};
         root /home/container/files;
         index index.php index.html;
-
         location / {
             if ("$WEB_TYPE" ~* (node|react|nextjs)) {
                 proxy_pass http://127.0.0.1:3000;
             }
             try_files \$uri \$uri/ /index.php?\$query_string;
         }
-
         location ~ \.php$ {
             fastcgi_pass 127.0.0.1:9000;
             fastcgi_index index.php;
@@ -145,21 +161,19 @@ pm = ondemand
 pm.max_children = 5
 EOF
 
-    # Start PHP
+    # Start PHP & Nginx
     php-fpm82 -y "$PHP_FPM_CONF" -D 2>/dev/null
-    
-    # Start Nginx
     nginx -c "$NGINX_CONF" -g "daemon on;" 2>/dev/null
 
-    # Start Node/React/Next
+    # Start Node-based apps
     if [[ "$WEB_TYPE" =~ (node|react|nextjs) ]]; then
         cd /home/container/files
-        if [[ "$WEB_TYPE" == "nextjs" ]]; then
-            npm install && npm run build && npm start &
-        elif [[ "$WEB_TYPE" == "react" ]]; then
-            npm install && npm run dev -- --host 0.0.0.0 --port 3000 &
+        if [[ -f "package.json" ]]; then
+             # If node_modules missing, try to install but don't block
+             [[ ! -d "node_modules" ]] && npm install --production &
+             npm start > /home/container/logs/node.log 2>&1 &
         else
-            node index.js > /home/container/logs/node.log 2>&1 &
+             node index.js > /home/container/logs/node.log 2>&1 &
         fi
     fi
 
