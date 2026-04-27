@@ -38,7 +38,7 @@ RUN apk add --no-cache \
     busybox-extras
 
 # Link php82 to php
-RUN ln -s /usr/bin/php82 /usr/bin/php
+RUN ln -sf /usr/bin/php82 /usr/bin/php
 
 # Configure Nginx
 RUN mkdir -p /run/nginx
