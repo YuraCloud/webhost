@@ -41,11 +41,48 @@ auto_detect() {
     fi
 }
 
-copy_template() {
+generate_template() {
+    echo -e "${CYAN}[SYSTEM]${NC} Generating $1 template..."
     case $1 in
-        html) cp /home/container/templates/index.html /home/container/files/index.html ;;
-        php) cp /home/container/templates/index.php /home/container/files/index.php ;;
-        *) cp /home/container/templates/node_index.js /home/container/files/index.js ;;
+        html)
+            cat <<EOF > /home/container/files/index.html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YuraCloud WebHost</title>
+    <style>
+        body { background: #0f172a; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { text-align: center; padding: 3rem; background: rgba(255,255,255,0.05); border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); }
+        h1 { color: #00d2ff; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>YuraCloud Online</h1>
+        <p>Your HTML site is ready.</p>
+    </div>
+</body>
+</html>
+EOF
+            ;;
+        php)
+            cat <<EOF > /home/container/files/index.php
+<?php
+echo "<h1>YuraCloud PHP Online</h1>";
+echo "<p>PHP version: " . phpversion() . "</p>";
+?>
+EOF
+            ;;
+        *)
+            cat <<EOF > /home/container/files/index.js
+const http = require('http');
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/html' });
+  res.end('<h1>YuraCloud Node.js Online</h1><p>Server is running.</p>');
+});
+server.listen(3000, '0.0.0.0', () => { console.log('Server ready!'); });
+EOF
+            ;;
     esac
 }
 
@@ -59,33 +96,25 @@ quick_setup() {
     echo ""
 
     echo -e "${CYAN}[Step 1/4] Domain Name${NC}"
-    echo -e "Please type your domain (ex: myweb.com) and press ENTER:"
+    echo -e "Enter domain (ex: myweb.com) and press ENTER:"
     read DOMAIN
     DOMAIN=${DOMAIN:-localhost}
-    echo -e "${GREEN}Domain set to: $DOMAIN${NC}"
-    echo ""
 
     echo -e "${CYAN}[Step 2/4] Server Port${NC}"
-    echo -e "Please type your Allocation Port and press ENTER:"
+    echo -e "Enter Allocation Port and press ENTER:"
     read PORT
     PORT=${PORT:-80}
-    echo -e "${GREEN}Port set to: $PORT${NC}"
-    echo ""
 
     echo -e "${CYAN}[Step 3/4] SSL Support${NC}"
-    echo -e "Enable SSL? (type 'true' or 'false') and press ENTER:"
+    echo -e "Enable SSL? (true/false) and press ENTER:"
     read SSL
     SSL=${SSL:-false}
-    echo -e "${GREEN}SSL set to: $SSL${NC}"
-    echo ""
 
     auto_detect
     echo -e "${CYAN}[Step 4/4] Web Framework${NC}"
-    echo -e "Detected: $WEB_TYPE. Type new one or press ENTER to keep:"
+    echo -e "Detected: $WEB_TYPE. Type new (html/php/node) or press ENTER:"
     read input_type
     WEB_TYPE=${input_type:-$WEB_TYPE}
-    echo -e "${GREEN}Type set to: $WEB_TYPE${NC}"
-    echo ""
 
     cat <<EOF > "$CONF_FILE"
 LANG=EN
@@ -95,12 +124,13 @@ SSL=$SSL
 WEB_TYPE=$WEB_TYPE
 EOF
 
-    if [ ! "$(ls -A /home/container/files)" ]; then
-        copy_template $WEB_TYPE
+    if [ ! "$(ls -A /home/container/files)" ] || [ "$WEB_TYPE" == "none" ]; then
+        [[ "$WEB_TYPE" == "none" ]] && WEB_TYPE="html"
+        generate_template $WEB_TYPE
     fi
 
     echo -e "${GREEN}Setup Success! Starting services...${NC}"
-    sleep 2
+    sleep 1
 }
 
 if [[ ! -f "$CONF_FILE" ]]; then
@@ -109,7 +139,6 @@ fi
 
 source "$CONF_FILE"
 CUR_LANG=${LANG:-EN}
-source "/home/container/bahasa/${CUR_LANG,,}.sh" 2>/dev/null || T_TITLE="WebHost v1.0"
 
 # --- Services ---
 
@@ -162,29 +191,25 @@ EOF
     php-fpm82 -y "$PHP_FPM_CONF" -D 2>/dev/null
     nginx -c "$NGINX_CONF" -g "daemon on;" 2>/dev/null
 
-    if [[ "$WEB_TYPE" == "nodejs" || "$WEB_TYPE" == "nextjs" ]]; then
+    if [[ "$WEB_TYPE" == "nodejs" || "$WEB_TYPE" == "node" ]]; then
         cd /home/container/files
-        if [[ "$WEB_TYPE" == "nextjs" ]]; then
-             npm start > /home/container/logs/node.log 2>&1 &
-        else
-             node index.js > /home/container/logs/node.log 2>&1 &
-        fi
+        node index.js > /home/container/logs/node.log 2>&1 &
     fi
 
     echo -e "${GREEN}##################################################${NC}"
     echo -e "${GREEN}#               WebHost Online!                  #${NC}"
-    echo -e "${GREEN}##################################################${NC}"
+    echo -e "  Domain: http://$DOMAIN:$PORT"
+    echo -e "##################################################${NC}"
 }
 
 show_menu() {
     echo -e "${CYAN}==================================================${NC}"
     echo -e "  ${BOLD}${BLUE}YuraCloud WebHost - v1.0.0${NC}"
-    echo -e "  ${WHITE}Status: ${GREEN}Online${NC} | Type: ${ORANGE}$WEB_TYPE${NC} | Port: ${ORANGE}$PORT${NC}"
+    echo -e "  ${WHITE}Type: ${ORANGE}$WEB_TYPE${NC} | Port: ${ORANGE}$PORT${NC}"
     echo -e "${CYAN}==================================================${NC}"
     echo -e " [1] Resources   [2] Fix Perms  [3] Git Pull"
     echo -e " [4] Restart Web [5] Stop Web   [6] Check Logs"
     echo -e " [7] Template    [9] Reset      [0] Exit"
-    echo -e "${CYAN}--------------------------------------------------${NC}"
 }
 
 # --- Auto Start ---
@@ -193,17 +218,17 @@ start_web
 # --- Loop ---
 while true; do
     show_menu
-    echo -e "Type your choice and press ENTER:"
+    echo -e "Choice and press ENTER:"
     read -t 60 choice
     case $choice in
-        1) top -b -n 1 | head -n 15; echo "Press ENTER to continue..."; read ;;
+        1) top -b -n 1 | head -n 15; echo "Press ENTER..."; read ;;
         2) chmod -R 755 /home/container/files; echo "Done." ;;
-        3) cd /home/container/files && git pull; echo "Press ENTER to continue..."; read ;;
+        3) cd /home/container/files && git pull; echo "Press ENTER..."; read ;;
         4) start_web ;;
         5) pkill nginx php node; echo "Stopped." ;;
-        6) echo "1. Nginx 2. PHP 3. Node"; read l; [ "$l" == "1" ] && tail -n 20 /home/container/logs/error.log; [ "$l" == "2" ] && tail -n 20 /home/container/logs/php-fpm.log; [ "$l" == "3" ] && tail -n 20 /home/container/logs/node.log; echo "Press ENTER to continue..."; read ;;
-        7) echo "Choose Template: (html/php/node)"; read t; copy_template $t; start_web ;;
-        9) rm "$CONF_FILE"; echo "Config deleted. Restarting..."; exit 0 ;;
+        6) echo "1. Nginx 2. PHP 3. Node"; read l; [ "$l" == "1" ] && tail -n 20 /home/container/logs/error.log; [ "$l" == "2" ] && tail -n 20 /home/container/logs/php-fpm.log; [ "$l" == "3" ] && tail -n 20 /home/container/logs/node.log; echo "Press ENTER..."; read ;;
+        7) echo "Template: (html/php/node)"; read t; generate_template $t; start_web ;;
+        9) rm "$CONF_FILE"; echo "Resetting..."; exit 0 ;;
         0) cleanup ;;
     esac
 done
