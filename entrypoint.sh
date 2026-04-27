@@ -33,6 +33,16 @@ auto_detect() {
     fi
 }
 
+copy_template() {
+    echo -e "${CYAN}[SYSTEM]${NC} Copying $1 template..."
+    case $1 in
+        html) cp /home/container/templates/index.html /home/container/files/index.html ;;
+        php) cp /home/container/templates/index.php /home/container/files/index.php ;;
+        nodejs|nextjs|react) cp /home/container/templates/node_index.js /home/container/files/index.js ;;
+    esac
+    echo -e "${GREEN}[DONE]${NC} Template applied."
+}
+
 quick_setup() {
     clear
     echo -e "${BLUE}##################################################${NC}"
@@ -43,30 +53,22 @@ quick_setup() {
     echo -e "${BLUE}##################################################${NC}"
     echo ""
     echo -e "${YELLOW}[!] First run detected.${NC}"
-    echo -e "${WHITE}Please answer the following questions to configure your server.${NC}"
     echo ""
 
-    # Fix for Pterodactyl console: print first, then read
     echo -e "${CYAN}1. Domain Name${NC}"
-    echo -e "Enter your domain (example: myweb.com or localhost)"
     echo -n "> "
     read input_domain
     DOMAIN=${input_domain:-localhost}
-    echo -e "${GREEN}Selected: $DOMAIN${NC}\n"
 
     echo -e "${CYAN}2. Server Port${NC}"
-    echo -e "Enter the port from your allocation (example: 80 or 25565)"
     echo -n "> "
     read input_port
     PORT=${input_port:-80}
-    echo -e "${GREEN}Selected: $PORT${NC}\n"
 
-    echo -e "${CYAN}3. SSL Support${NC}"
-    echo -e "Do you want to enable SSL? (type 'true' or 'false')"
+    echo -e "${CYAN}3. SSL Support (true/false)${NC}"
     echo -n "> "
     read input_ssl
     SSL=${input_ssl:-false}
-    echo -e "${GREEN}Selected: $SSL${NC}\n"
 
     auto_detect
     echo -e "${CYAN}4. Web Framework${NC}"
@@ -75,7 +77,6 @@ quick_setup() {
     echo -n "> "
     read input_type
     WEB_TYPE=${input_type:-$WEB_TYPE}
-    echo -e "${GREEN}Selected: $WEB_TYPE${NC}\n"
 
     cat <<EOF > "$CONF_FILE"
 LANG=EN
@@ -85,11 +86,13 @@ SSL=$SSL
 WEB_TYPE=$WEB_TYPE
 EOF
 
-    echo -e "${BLUE}==================================================${NC}"
-    echo -e "      ${BOLD}${GREEN}CONGRATULATIONS! SETUP COMPLETE!${NC}"
-    echo -e "${BLUE}==================================================${NC}"
-    echo -e "${WHITE}Your server is now starting with YuraCloud optimization.${NC}"
-    sleep 3
+    # If files is empty, copy template
+    if [ ! "$(ls -A /home/container/files)" ]; then
+        copy_template $WEB_TYPE
+    fi
+
+    echo -e "${GREEN}Setup saved! Starting services...${NC}"
+    sleep 2
 }
 
 if [[ ! -f "$CONF_FILE" ]]; then
@@ -153,9 +156,11 @@ EOF
 
     if [[ "$WEB_TYPE" == "nodejs" || "$WEB_TYPE" == "nextjs" ]]; then
         cd /home/container/files
-        [[ ! -d "node_modules" ]] && npm install --production
-        [[ "$WEB_TYPE" == "nodejs" ]] && node index.js > /home/container/logs/node.log 2>&1 &
-        [[ "$WEB_TYPE" == "nextjs" ]] && npm start > /home/container/logs/node.log 2>&1 &
+        if [[ "$WEB_TYPE" == "nextjs" ]]; then
+             npm start > /home/container/logs/node.log 2>&1 &
+        else
+             node index.js > /home/container/logs/node.log 2>&1 &
+        fi
     fi
 
     echo -e "${GREEN}##################################################${NC}"
@@ -172,7 +177,7 @@ show_menu() {
     echo -e "${CYAN}==================================================${NC}"
     echo -e " [1] ${WHITE}Resources${NC}   [2] ${WHITE}Fix Perms${NC}  [3] ${WHITE}Git Pull${NC}"
     echo -e " [4] ${WHITE}Restart Web${NC} [5] ${WHITE}Stop Web${NC}   [6] ${WHITE}Check Logs${NC}"
-    echo -e " [9] ${WHITE}Reset Config${NC} [11] ${WHITE}Language${NC} [0] ${WHITE}Exit${NC}"
+    echo -e " [7] ${WHITE}Change Template${NC} [9] ${WHITE}Reset Config${NC} [0] ${WHITE}Exit${NC}"
     echo -e "${CYAN}--------------------------------------------------${NC}"
 }
 
@@ -191,9 +196,8 @@ while true; do
         4) start_web ;;
         5) pkill nginx php node; echo "Stopped." ;;
         6) echo "1. Nginx 2. PHP 3. Node"; read -p "> " l; [ "$l" == "1" ] && tail -n 20 /home/container/logs/error.log; [ "$l" == "2" ] && tail -n 20 /home/container/logs/php-fpm.log; [ "$l" == "3" ] && tail -n 20 /home/container/logs/node.log; read -p "Enter..." ;;
+        7) echo "Choose Template: (html/php/node)"; read -p "> " t; copy_template $t; start_web ;;
         9) rm "$CONF_FILE"; echo "Config deleted. Restarting..."; exit 0 ;;
-        11) echo "1. EN 2. ID 3. KR 4. JP"; read -p "> " l; [ "$l" == "1" ] && L=EN; [ "$l" == "2" ] && L=ID; [ "$l" == "3" ] && L=KR; [ "$l" == "4" ] && L=JP;
-            sed -i "s/LANG=.*/LANG=$L/" "$CONF_FILE"; source "$CONF_FILE"; clear ;;
         0) exit 0 ;;
     esac
 done
