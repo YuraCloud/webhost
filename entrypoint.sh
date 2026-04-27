@@ -14,7 +14,7 @@ WHITE='\033[1;37m'
 ORANGE='\033[0;33m'
 NC='\033[0m' 
 
-# Setup Workspace (Everything in /home/container)
+# Setup Workspace
 mkdir -p /home/container/files /home/container/logs /home/container/.conf /home/container/.backups
 
 # Config Management
@@ -32,31 +32,52 @@ auto_detect() {
     fi
 }
 
-# Initial Config
-if [[ ! -f "$CONF_FILE" ]]; then
+quick_setup() {
+    clear
+    echo -e "${CYAN}==================================================${NC}"
+    echo -e "         ${BOLD}${BLUE}YuraCloud WebHost - Quick Setup${NC}"
+    echo -e "${CYAN}==================================================${NC}"
+    echo -e "${WHITE}First run detected. Please configure your server:${NC}"
+    echo ""
+    read -p "Enter Domain (default: localhost): " input_domain
+    DOMAIN=${input_domain:-localhost}
+    
+    read -p "Enter Port (default: 80): " input_port
+    PORT=${input_port:-80}
+    
+    read -p "Use SSL? (true/false, default: false): " input_ssl
+    SSL=${input_ssl:-false}
+    
     auto_detect
+    echo -e "Detected Web Type: ${ORANGE}$WEB_TYPE${NC}"
+    read -p "Override Web Type? (html/php/nodejs/nextjs/laravel, enter to skip): " input_type
+    WEB_TYPE=${input_type:-$WEB_TYPE}
+
     cat <<EOF > "$CONF_FILE"
 LANG=EN
-DOMAIN=${DOMAIN:-localhost}
-PORT=${SERVER_PORT:-80}
-SSL=${SSL:-false}
-WEB_TYPE=${WEB_TYPE_OVERRIDE:-$WEB_TYPE}
+DOMAIN=$DOMAIN
+PORT=$PORT
+SSL=$SSL
+WEB_TYPE=$WEB_TYPE
 EOF
+    echo -e "${GREEN}Setup saved! Restarting...${NC}"
+    sleep 2
+}
+
+if [[ ! -f "$CONF_FILE" ]]; then
+    quick_setup
 fi
 
 source "$CONF_FILE"
 CUR_LANG=${LANG:-EN}
 source "/home/container/bahasa/${CUR_LANG,,}.sh" 2>/dev/null || T_TITLE="WebHost v1.0"
 
-# --- Optimized Functions ---
+# --- Services ---
 
 start_web() {
     echo -e "${CYAN}[SYSTEM]${NC} Starting Web Services ($WEB_TYPE)..."
-    
-    # Kill existing
     pkill nginx php node 2>/dev/null
 
-    # Generate Writable Nginx Config
     cat <<EOF > "$NGINX_CONF"
 worker_processes auto;
 pid /home/container/logs/nginx.pid;
@@ -72,7 +93,7 @@ http {
     uwsgi_temp_path /home/container/logs/nginx_uwsgi;
     scgi_temp_path /home/container/logs/nginx_scgi;
     server {
-        listen ${SERVER_PORT};
+        listen ${PORT};
         root /home/container/files;
         index index.php index.html;
         location / {
@@ -88,7 +109,6 @@ http {
 }
 EOF
 
-    # Generate Writable PHP-FPM Config
     cat <<EOF > "$PHP_FPM_CONF"
 [global]
 error_log = /home/container/logs/php-fpm.log
@@ -100,16 +120,14 @@ pm = ondemand
 pm.max_children = 5
 EOF
 
-    # Start Services with Custom Config Paths
     php-fpm82 -y "$PHP_FPM_CONF" -D 2>/dev/null
     nginx -c "$NGINX_CONF" -g "daemon on;" 2>/dev/null
 
-    if [[ "$WEB_TYPE" == "nodejs" || "$WEB_TYPE" == "react" || "$WEB_TYPE" == "nextjs" ]]; then
+    if [[ "$WEB_TYPE" == "nodejs" || "$WEB_TYPE" == "nextjs" ]]; then
         cd /home/container/files
         [[ ! -d "node_modules" ]] && npm install --production
-        [[ "$WEB_TYPE" == "nodejs" ]] && node index.js &
-        [[ "$WEB_TYPE" == "nextjs" ]] && npm start &
-        [[ "$WEB_TYPE" == "react" ]] && npm run dev -- --host 0.0.0.0 --port 3000 &
+        [[ "$WEB_TYPE" == "nodejs" ]] && node index.js > /home/container/logs/node.log 2>&1 &
+        [[ "$WEB_TYPE" == "nextjs" ]] && npm start > /home/container/logs/node.log 2>&1 &
     fi
 
     echo -e "${GREEN}##################################################${NC}"
@@ -120,40 +138,33 @@ EOF
 }
 
 show_menu() {
-    clear
     echo -e "${CYAN}==================================================${NC}"
     echo -e "  ${BOLD}${BLUE}YuraCloud WebHost - v1.0.0${NC}"
-    echo -e "  ${WHITE}Status: ${GREEN}Online${NC} | Type: ${ORANGE}$WEB_TYPE${NC}"
+    echo -e "  ${WHITE}Status: ${GREEN}Online${NC} | Type: ${ORANGE}$WEB_TYPE${NC} | Port: ${ORANGE}$PORT${NC}"
     echo -e "${CYAN}==================================================${NC}"
-    echo -e " [1] ${WHITE}Check Resources${NC}  [2] ${WHITE}Fix Permissions${NC}"
-    echo -e " [3] ${WHITE}Git Pull${NC}         [4] ${WHITE}Restart Web${NC}"
-    echo -e " [5] ${WHITE}Stop Web${NC}         [6] ${WHITE}Node.js Log${NC}"
-    echo -e " [7] ${WHITE}Nginx Log${NC}        [8] ${WHITE}PHP Log${NC}"
-    echo -e " [10] ${WHITE}Advanced Tools${NC}   [11] ${WHITE}Language${NC}"
-    echo -e " [0] ${WHITE}Exit${NC}"
+    echo -e " [1] ${WHITE}Resources${NC}   [2] ${WHITE}Fix Perms${NC}  [3] ${WHITE}Git Pull${NC}"
+    echo -e " [4] ${WHITE}Restart Web${NC} [5] ${WHITE}Stop Web${NC}   [6] ${WHITE}Check Logs${NC}"
+    echo -e " [9] ${WHITE}Reset Config${NC} [11] ${WHITE}Language${NC} [0] ${WHITE}Exit${NC}"
     echo -e "${CYAN}--------------------------------------------------${NC}"
 }
 
 # --- Auto Start ---
 start_web
 
-# --- Main Interaction Loop ---
+# --- Loop ---
 while true; do
     show_menu
-    read -t 60 -p "yuracloud@webhost > " choice
-    [[ -z "$choice" ]] && continue
+    read -p "yuracloud@webhost > " choice
     case $choice in
-        1) top -b -n 1 | head -n 20; read -p "Press Enter..." ;;
-        2) chmod -R 755 /home/container/files; echo "Fixed."; sleep 1 ;;
-        3) cd /home/container/files && git pull; read -p "Press Enter..." ;;
-        4) start_web; sleep 1 ;;
-        5) pkill nginx php node; echo "Services stopped."; sleep 1 ;;
-        6) tail -n 50 /home/container/logs/node.log 2>/dev/null || echo "No log."; read -p "Enter..." ;;
-        7) tail -n 50 /home/container/logs/error.log; read -p "Enter..." ;;
-        8) tail -n 50 /home/container/logs/php-fpm.log; read -p "Enter..." ;;
+        1) top -b -n 1 | head -n 15; read -p "Enter..." ;;
+        2) chmod -R 755 /home/container/files; echo "Done." ;;
+        3) cd /home/container/files && git pull; read -p "Enter..." ;;
+        4) start_web ;;
+        5) pkill nginx php node; echo "Stopped." ;;
+        6) echo "1. Nginx 2. PHP 3. Node"; read -p "> " l; [ "$l" == "1" ] && tail -n 20 /home/container/logs/error.log; [ "$l" == "2" ] && tail -n 20 /home/container/logs/php-fpm.log; [ "$l" == "3" ] && tail -n 20 /home/container/logs/node.log; read -p "Enter..." ;;
+        9) rm "$CONF_FILE"; echo "Config deleted. Restart to setup."; exit 0 ;;
         11) echo "1. EN 2. ID 3. KR 4. JP"; read -p "> " l; [ "$l" == "1" ] && L=EN; [ "$l" == "2" ] && L=ID; [ "$l" == "3" ] && L=KR; [ "$l" == "4" ] && L=JP;
             sed -i "s/LANG=.*/LANG=$L/" "$CONF_FILE"; source "$CONF_FILE"; clear ;;
         0) exit 0 ;;
-        *) echo "Invalid option." ; sleep 1 ;;
     esac
 done
