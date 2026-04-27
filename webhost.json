@@ -19,7 +19,7 @@
     "startup": "bash /entrypoint.sh",
     "config": {
         "files": "{}",
-        "startup": "{\r\n    \"done\": \"uptime\"\r\n}",
+        "startup": "{\r\n    \"done\": \"WebHost Online!\"\r\n}",
         "logs": "{}",
         "stop": "^^C"
     },

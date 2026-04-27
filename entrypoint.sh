@@ -113,7 +113,11 @@ EOF
     [[ "$WEB_TYPE" == "nodejs" ]] && node /home/container/files/index.js &
     [[ "$WEB_TYPE" == "react" ]] && cd /home/container/files && npm run dev -- --host 0.0.0.0 --port 3000 &
     [[ "$WEB_TYPE" == "nextjs" ]] && cd /home/container/files && npm run dev -- -p 3000 &
-    echo -e "${GREEN}✔ WebHost Online!${NC}"
+    echo -e "${GREEN}##################################################${NC}"
+    echo -e "${GREEN}#                                                #${NC}"
+    echo -e "${GREEN}#               WebHost Online!                  #${NC}"
+    echo -e "${GREEN}#                                                #${NC}"
+    echo -e "${GREEN}##################################################${NC}"
 }
 
 # --- Main UI Loop ---
