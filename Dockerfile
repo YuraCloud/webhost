@@ -11,7 +11,6 @@ RUN apk add --no-cache \
     php82 \
     php82-fpm \
     php82-mysqli \
-    php82-json \
     php82-openssl \
     php82-curl \
     php82-zlib \
