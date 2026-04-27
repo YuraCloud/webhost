@@ -4,7 +4,7 @@
         "version": "PTDL_v2",
         "update_url": ""
     },
-    "exported_at": "2026-04-27T20:01:35+07:00",
+    "exported_at": "2026-04-27T20:30:00+07:00",
     "name": "WebHost Pro",
     "author": "dapaupau@sigaul.com",
     "description": "Professional Web Hosting System by YuraCloud.",
@@ -13,16 +13,14 @@
         "pid_limit"
     ],
     "docker_images": {
-        "WebHost": "ghcr.io/yuracloud/webhost:latest"
+        "WebHost Latest": "ghcr.io/yuracloud/webhost:latest"
     },
     "file_denylist": [],
-    "startup": "bash /entrypoint.sh",
+    "startup": "chmod +x /entrypoint.sh && /entrypoint.sh",
     "config": {
-        "files": {},
-        "startup": {
-            "done": "WebHost Online!"
-        },
-        "logs": {},
+        "files": "{}",
+        "startup": "{\n    \"done\": \"WebHost Online!\"\n}",
+        "logs": "{}",
         "stop": "kill"
     },
     "scripts": {
@@ -32,5 +30,46 @@
             "entrypoint": "ash"
         }
     },
-    "variables": []
+    "variables": [
+        {
+            "name": "Domain",
+            "description": "The domain name for the web server.",
+            "env_variable": "DOMAIN",
+            "default_value": "localhost",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|max:255",
+            "field_type": "text"
+        },
+        {
+            "name": "Server Port",
+            "description": "The port the web server will listen on.",
+            "env_variable": "SERVER_PORT",
+            "default_value": "80",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|numeric|digits_between:1,5",
+            "field_type": "text"
+        },
+        {
+            "name": "Use SSL",
+            "description": "Whether to use SSL (requires certs in .conf folder).",
+            "env_variable": "SSL",
+            "default_value": "false",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|max:5",
+            "field_type": "text"
+        },
+        {
+            "name": "Web Type Override",
+            "description": "Manually set the web type (html, php, nodejs, react, nextjs, laravel).",
+            "env_variable": "WEB_TYPE_OVERRIDE",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string|max:20",
+            "field_type": "text"
+        }
+    ]
 }

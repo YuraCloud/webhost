@@ -14,11 +14,13 @@ WHITE='\033[1;37m'
 ORANGE='\033[0;33m'
 NC='\033[0m' 
 
-# Setup Workspace
+# Setup Workspace (Everything in /home/container)
 mkdir -p /home/container/files /home/container/logs /home/container/.conf /home/container/.backups
 
 # Config Management
 CONF_FILE="/home/container/.conf/webhost.conf"
+NGINX_CONF="/home/container/.conf/nginx.conf"
+PHP_FPM_CONF="/home/container/.conf/php-fpm.conf"
 
 auto_detect() {
     if [[ -f "/home/container/files/artisan" ]]; then WEB_TYPE="laravel"
@@ -30,7 +32,7 @@ auto_detect() {
     fi
 }
 
-# Initial Config Generation
+# Initial Config
 if [[ ! -f "$CONF_FILE" ]]; then
     auto_detect
     cat <<EOF > "$CONF_FILE"
@@ -46,7 +48,7 @@ source "$CONF_FILE"
 CUR_LANG=${LANG:-EN}
 source "/home/container/bahasa/${CUR_LANG,,}.sh" 2>/dev/null || T_TITLE="WebHost v1.0"
 
-# --- Functions ---
+# --- Optimized Functions ---
 
 start_web() {
     echo -e "${CYAN}[SYSTEM]${NC} Starting Web Services ($WEB_TYPE)..."
@@ -54,17 +56,21 @@ start_web() {
     # Kill existing
     pkill nginx php node 2>/dev/null
 
-    # Generate nginx config based on Port
-    cat <<EOF > /etc/nginx/nginx.conf
-user root;
+    # Generate Writable Nginx Config
+    cat <<EOF > "$NGINX_CONF"
 worker_processes auto;
-pid /run/nginx.pid;
+pid /home/container/logs/nginx.pid;
 events { worker_connections 768; }
 http {
     include /etc/nginx/mime.types;
     default_type application/octet-stream;
     access_log /home/container/logs/access.log;
     error_log /home/container/logs/error.log;
+    client_body_temp_path /home/container/logs/nginx_body;
+    proxy_temp_path /home/container/logs/nginx_proxy;
+    fastcgi_temp_path /home/container/logs/nginx_fastcgi;
+    uwsgi_temp_path /home/container/logs/nginx_uwsgi;
+    scgi_temp_path /home/container/logs/nginx_scgi;
     server {
         listen ${SERVER_PORT};
         root /home/container/files;
@@ -82,9 +88,21 @@ http {
 }
 EOF
 
-    # Start Services
-    php-fpm82 -D 2>/dev/null
-    nginx -g "daemon on;" 2>/dev/null
+    # Generate Writable PHP-FPM Config
+    cat <<EOF > "$PHP_FPM_CONF"
+[global]
+error_log = /home/container/logs/php-fpm.log
+[www]
+user = container
+group = container
+listen = 127.0.0.1:9000
+pm = ondemand
+pm.max_children = 5
+EOF
+
+    # Start Services with Custom Config Paths
+    php-fpm82 -y "$PHP_FPM_CONF" -D 2>/dev/null
+    nginx -c "$NGINX_CONF" -g "daemon on;" 2>/dev/null
 
     if [[ "$WEB_TYPE" == "nodejs" || "$WEB_TYPE" == "react" || "$WEB_TYPE" == "nextjs" ]]; then
         cd /home/container/files
@@ -102,18 +120,21 @@ EOF
 }
 
 show_menu() {
+    clear
     echo -e "${CYAN}==================================================${NC}"
     echo -e "  ${BOLD}${BLUE}YuraCloud WebHost - v1.0.0${NC}"
     echo -e "  ${WHITE}Status: ${GREEN}Online${NC} | Type: ${ORANGE}$WEB_TYPE${NC}"
     echo -e "${CYAN}==================================================${NC}"
-    echo -e " [1] ${WHITE}Check Status${NC}   [2] ${WHITE}Fix Permissions${NC}"
-    echo -e " [3] ${WHITE}Git Deploy${NC}     [4] ${WHITE}Restart Web${NC}"
-    echo -e " [5] ${WHITE}Stop Web${NC}      [10] ${WHITE}Advanced Tools${NC}"
-    echo -e " [11] ${WHITE}Language${NC}      [0] ${WHITE}Exit${NC}"
+    echo -e " [1] ${WHITE}Check Resources${NC}  [2] ${WHITE}Fix Permissions${NC}"
+    echo -e " [3] ${WHITE}Git Pull${NC}         [4] ${WHITE}Restart Web${NC}"
+    echo -e " [5] ${WHITE}Stop Web${NC}         [6] ${WHITE}Node.js Log${NC}"
+    echo -e " [7] ${WHITE}Nginx Log${NC}        [8] ${WHITE}PHP Log${NC}"
+    echo -e " [10] ${WHITE}Advanced Tools${NC}   [11] ${WHITE}Language${NC}"
+    echo -e " [0] ${WHITE}Exit${NC}"
     echo -e "${CYAN}--------------------------------------------------${NC}"
 }
 
-# --- Auto Start on Boot ---
+# --- Auto Start ---
 start_web
 
 # --- Main Interaction Loop ---
@@ -122,13 +143,17 @@ while true; do
     read -t 60 -p "yuracloud@webhost > " choice
     [[ -z "$choice" ]] && continue
     case $choice in
-        1) top -b -n 1 | head -n 20 ;;
-        2) chown -R container:container /home/container/files; chmod -R 755 /home/container/files; echo "Fixed." ;;
-        3) cd /home/container/files && git pull ;;
-        4) start_web ;;
-        5) pkill nginx php node; echo "Services stopped." ;;
+        1) top -b -n 1 | head -n 20; read -p "Press Enter..." ;;
+        2) chmod -R 755 /home/container/files; echo "Fixed."; sleep 1 ;;
+        3) cd /home/container/files && git pull; read -p "Press Enter..." ;;
+        4) start_web; sleep 1 ;;
+        5) pkill nginx php node; echo "Services stopped."; sleep 1 ;;
+        6) tail -n 50 /home/container/logs/node.log 2>/dev/null || echo "No log."; read -p "Enter..." ;;
+        7) tail -n 50 /home/container/logs/error.log; read -p "Enter..." ;;
+        8) tail -n 50 /home/container/logs/php-fpm.log; read -p "Enter..." ;;
         11) echo "1. EN 2. ID 3. KR 4. JP"; read -p "> " l; [ "$l" == "1" ] && L=EN; [ "$l" == "2" ] && L=ID; [ "$l" == "3" ] && L=KR; [ "$l" == "4" ] && L=JP;
             sed -i "s/LANG=.*/LANG=$L/" "$CONF_FILE"; source "$CONF_FILE"; clear ;;
         0) exit 0 ;;
+        *) echo "Invalid option." ; sleep 1 ;;
     esac
 done
