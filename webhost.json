@@ -2,12 +2,12 @@
     "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
     "meta": {
         "version": "PTDL_v2",
-        "update_url": null
+        "update_url": ""
     },
-    "exported_at": "2026-04-27T20:05:00+07:00",
+    "exported_at": "2026-04-27T20:15:00+07:00",
     "name": "WebHost",
     "author": "dapaupau@sigaul.com",
-    "description": "Professional WebHost System. Powered by YuraCloud. Supports PHP, Node.js, Laravel, React, and Next.js with interactive console.",
+    "description": "Professional WebHost System. Powered by YuraCloud.",
     "features": [
         "eula",
         "pid_limit"
@@ -18,14 +18,16 @@
     "file_denylist": [],
     "startup": "bash /entrypoint.sh",
     "config": {
-        "files": "{}",
-        "startup": "{\r\n    \"done\": \"WebHost Online!\"\r\n}",
-        "logs": "{}",
-        "stop": "^^C"
+        "files": {},
+        "startup": {
+            "done": "WebHost Online!"
+        },
+        "logs": {},
+        "stop": "kill"
     },
     "scripts": {
         "installation": {
-            "script": "#!/bin/ash\r\n# WebHost Installation Script\r\n# Powered by YuraCloud\r\n\r\nmkdir -p /mnt/server/files\r\nmkdir -p /mnt/server/.conf\r\nmkdir -p /mnt/server/templates\r\necho \"Installation complete.\"",
+            "script": "#!/bin/ash\r\nmkdir -p /mnt/server/files\r\nmkdir -p /mnt/server/.conf\r\nmkdir -p /mnt/server/templates\r\necho \"Installation complete.\"",
             "container": "ghcr.io/pterodactyl/installers:alpine",
             "entrypoint": "ash"
         }
