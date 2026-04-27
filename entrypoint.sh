@@ -15,6 +15,17 @@ ORANGE='\033[0;33m'
 NC='\033[0m' 
 BOLD='\033[1m'
 
+# --- Signal Handling ---
+cleanup() {
+    echo -e "\n${RED}[SYSTEM]${NC} Shutting down services..."
+    pkill nginx php node 2>/dev/null
+    echo -e "${GREEN}[DONE]${NC} Services stopped. Goodbye!"
+    exit 0
+}
+
+# Trap SIGINT and SIGTERM for graceful stop from Panel
+trap cleanup SIGINT SIGTERM
+
 # Setup Workspace
 mkdir -p /home/container/files /home/container/logs /home/container/.conf /home/container/.backups
 
@@ -86,7 +97,6 @@ SSL=$SSL
 WEB_TYPE=$WEB_TYPE
 EOF
 
-    # If files is empty, copy template
     if [ ! "$(ls -A /home/container/files)" ]; then
         copy_template $WEB_TYPE
     fi
@@ -188,7 +198,8 @@ start_web
 while true; do
     show_menu
     echo -n "yuracloud@webhost > "
-    read choice
+    # Added -t to read to prevent hanging during panel stop
+    read -t 60 choice
     case $choice in
         1) top -b -n 1 | head -n 15; read -p "Enter..." ;;
         2) chmod -R 755 /home/container/files; echo "Done." ;;
@@ -198,6 +209,6 @@ while true; do
         6) echo "1. Nginx 2. PHP 3. Node"; read -p "> " l; [ "$l" == "1" ] && tail -n 20 /home/container/logs/error.log; [ "$l" == "2" ] && tail -n 20 /home/container/logs/php-fpm.log; [ "$l" == "3" ] && tail -n 20 /home/container/logs/node.log; read -p "Enter..." ;;
         7) echo "Choose Template: (html/php/node)"; read -p "> " t; copy_template $t; start_web ;;
         9) rm "$CONF_FILE"; echo "Config deleted. Restarting..."; exit 0 ;;
-        0) exit 0 ;;
+        0) cleanup ;;
     esac
 done

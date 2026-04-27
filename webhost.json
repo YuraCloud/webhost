@@ -21,7 +21,7 @@
         "files": "{}",
         "startup": "{\n    \"done\": \"WebHost Online!\"\n}",
         "logs": "{}",
-        "stop": "kill"
+        "stop": "SIGINT"
     },
     "scripts": {
         "installation": {
