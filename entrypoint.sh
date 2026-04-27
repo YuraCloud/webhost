@@ -19,11 +19,8 @@ BOLD='\033[1m'
 cleanup() {
     echo -e "\n${RED}[SYSTEM]${NC} Shutting down services..."
     pkill nginx php node 2>/dev/null
-    echo -e "${GREEN}[DONE]${NC} Services stopped. Goodbye!"
     exit 0
 }
-
-# Trap SIGINT and SIGTERM for graceful stop from Panel
 trap cleanup SIGINT SIGTERM
 
 # Setup Workspace
@@ -45,49 +42,50 @@ auto_detect() {
 }
 
 copy_template() {
-    echo -e "${CYAN}[SYSTEM]${NC} Copying $1 template..."
     case $1 in
         html) cp /home/container/templates/index.html /home/container/files/index.html ;;
         php) cp /home/container/templates/index.php /home/container/files/index.php ;;
-        nodejs|nextjs|react) cp /home/container/templates/node_index.js /home/container/files/index.js ;;
+        *) cp /home/container/templates/node_index.js /home/container/files/index.js ;;
     esac
-    echo -e "${GREEN}[DONE]${NC} Template applied."
 }
 
 quick_setup() {
     clear
     echo -e "${BLUE}##################################################${NC}"
-    echo -e "${BLUE}#                                                #${NC}"
-    echo -e "${BLUE}#        ${BOLD}${CYAN}YURACLOUD WEBHOST - INITIAL SETUP${NC}${BLUE}       #${NC}"
-    echo -e "${BLUE}#            ${WHITE}Professional & Optimized${NC}${BLUE}            #${NC}"
-    echo -e "${BLUE}#                                                #${NC}"
+    echo -e "${BLUE}#      YURACLOUD WEBHOST - INITIAL SETUP         #${NC}"
     echo -e "${BLUE}##################################################${NC}"
     echo ""
     echo -e "${YELLOW}[!] First run detected.${NC}"
     echo ""
 
-    echo -e "${CYAN}1. Domain Name${NC}"
-    echo -n "> "
-    read input_domain
-    DOMAIN=${input_domain:-localhost}
+    echo -e "${CYAN}[Step 1/4] Domain Name${NC}"
+    echo -e "Please type your domain (ex: myweb.com) and press ENTER:"
+    read DOMAIN
+    DOMAIN=${DOMAIN:-localhost}
+    echo -e "${GREEN}Domain set to: $DOMAIN${NC}"
+    echo ""
 
-    echo -e "${CYAN}2. Server Port${NC}"
-    echo -n "> "
-    read input_port
-    PORT=${input_port:-80}
+    echo -e "${CYAN}[Step 2/4] Server Port${NC}"
+    echo -e "Please type your Allocation Port and press ENTER:"
+    read PORT
+    PORT=${PORT:-80}
+    echo -e "${GREEN}Port set to: $PORT${NC}"
+    echo ""
 
-    echo -e "${CYAN}3. SSL Support (true/false)${NC}"
-    echo -n "> "
-    read input_ssl
-    SSL=${input_ssl:-false}
+    echo -e "${CYAN}[Step 3/4] SSL Support${NC}"
+    echo -e "Enable SSL? (type 'true' or 'false') and press ENTER:"
+    read SSL
+    SSL=${SSL:-false}
+    echo -e "${GREEN}SSL set to: $SSL${NC}"
+    echo ""
 
     auto_detect
-    echo -e "${CYAN}4. Web Framework${NC}"
-    echo -e "Detected: ${ORANGE}$WEB_TYPE${NC}"
-    echo -e "Press Enter to keep detected, or type (html/php/nodejs/nextjs/laravel)"
-    echo -n "> "
+    echo -e "${CYAN}[Step 4/4] Web Framework${NC}"
+    echo -e "Detected: $WEB_TYPE. Type new one or press ENTER to keep:"
     read input_type
     WEB_TYPE=${input_type:-$WEB_TYPE}
+    echo -e "${GREEN}Type set to: $WEB_TYPE${NC}"
+    echo ""
 
     cat <<EOF > "$CONF_FILE"
 LANG=EN
@@ -101,7 +99,7 @@ EOF
         copy_template $WEB_TYPE
     fi
 
-    echo -e "${GREEN}Setup saved! Starting services...${NC}"
+    echo -e "${GREEN}Setup Success! Starting services...${NC}"
     sleep 2
 }
 
@@ -174,9 +172,7 @@ EOF
     fi
 
     echo -e "${GREEN}##################################################${NC}"
-    echo -e "${GREEN}#                                                #${NC}"
     echo -e "${GREEN}#               WebHost Online!                  #${NC}"
-    echo -e "${GREEN}#                                                #${NC}"
     echo -e "${GREEN}##################################################${NC}"
 }
 
@@ -185,9 +181,9 @@ show_menu() {
     echo -e "  ${BOLD}${BLUE}YuraCloud WebHost - v1.0.0${NC}"
     echo -e "  ${WHITE}Status: ${GREEN}Online${NC} | Type: ${ORANGE}$WEB_TYPE${NC} | Port: ${ORANGE}$PORT${NC}"
     echo -e "${CYAN}==================================================${NC}"
-    echo -e " [1] ${WHITE}Resources${NC}   [2] ${WHITE}Fix Perms${NC}  [3] ${WHITE}Git Pull${NC}"
-    echo -e " [4] ${WHITE}Restart Web${NC} [5] ${WHITE}Stop Web${NC}   [6] ${WHITE}Check Logs${NC}"
-    echo -e " [7] ${WHITE}Change Template${NC} [9] ${WHITE}Reset Config${NC} [0] ${WHITE}Exit${NC}"
+    echo -e " [1] Resources   [2] Fix Perms  [3] Git Pull"
+    echo -e " [4] Restart Web [5] Stop Web   [6] Check Logs"
+    echo -e " [7] Template    [9] Reset      [0] Exit"
     echo -e "${CYAN}--------------------------------------------------${NC}"
 }
 
@@ -197,17 +193,16 @@ start_web
 # --- Loop ---
 while true; do
     show_menu
-    echo -n "yuracloud@webhost > "
-    # Added -t to read to prevent hanging during panel stop
+    echo -e "Type your choice and press ENTER:"
     read -t 60 choice
     case $choice in
-        1) top -b -n 1 | head -n 15; read -p "Enter..." ;;
+        1) top -b -n 1 | head -n 15; echo "Press ENTER to continue..."; read ;;
         2) chmod -R 755 /home/container/files; echo "Done." ;;
-        3) cd /home/container/files && git pull; read -p "Enter..." ;;
+        3) cd /home/container/files && git pull; echo "Press ENTER to continue..."; read ;;
         4) start_web ;;
         5) pkill nginx php node; echo "Stopped." ;;
-        6) echo "1. Nginx 2. PHP 3. Node"; read -p "> " l; [ "$l" == "1" ] && tail -n 20 /home/container/logs/error.log; [ "$l" == "2" ] && tail -n 20 /home/container/logs/php-fpm.log; [ "$l" == "3" ] && tail -n 20 /home/container/logs/node.log; read -p "Enter..." ;;
-        7) echo "Choose Template: (html/php/node)"; read -p "> " t; copy_template $t; start_web ;;
+        6) echo "1. Nginx 2. PHP 3. Node"; read l; [ "$l" == "1" ] && tail -n 20 /home/container/logs/error.log; [ "$l" == "2" ] && tail -n 20 /home/container/logs/php-fpm.log; [ "$l" == "3" ] && tail -n 20 /home/container/logs/node.log; echo "Press ENTER to continue..."; read ;;
+        7) echo "Choose Template: (html/php/node)"; read t; copy_template $t; start_web ;;
         9) rm "$CONF_FILE"; echo "Config deleted. Restarting..."; exit 0 ;;
         0) cleanup ;;
     esac
