@@ -4,11 +4,11 @@
         "version": "PTDL_v2",
         "update_url": null
     },
-    "exported_at": "2024-04-27T18:45:00+00:00",
+    "exported_at": "2026-04-27T19:00:00+00:00",
     "name": "WebHost",
     "author": "dapaupau@sigaul.com",
     "description": "A comprehensive web hosting egg supporting PHP, Node.js, and more with an interactive management console.",
-    "features": null,
+    "features": [],
     "docker_images": {
         "ghcr.io/yuracloud/webhost:latest": "ghcr.io/yuracloud/webhost:latest"
     },
@@ -16,7 +16,7 @@
     "startup": "bash /entrypoint.sh",
     "config": {
         "files": "{}",
-        "startup": "{\"done\": \"Services started.\"}",
+        "startup": "{\"done\": \"WebHost Online!\"}",
         "logs": "{}",
         "stop": "^C"
     },
