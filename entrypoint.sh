@@ -13,6 +13,7 @@ CYAN='\033[1;36m'
 WHITE='\033[1;37m'
 ORANGE='\033[0;33m'
 NC='\033[0m' 
+BOLD='\033[1m'
 
 # Setup Workspace
 mkdir -p /home/container/files /home/container/logs /home/container/.conf /home/container/.backups
@@ -34,24 +35,47 @@ auto_detect() {
 
 quick_setup() {
     clear
-    echo -e "${CYAN}==================================================${NC}"
-    echo -e "         ${BOLD}${BLUE}YuraCloud WebHost - Quick Setup${NC}"
-    echo -e "${CYAN}==================================================${NC}"
-    echo -e "${WHITE}First run detected. Please configure your server:${NC}"
+    echo -e "${BLUE}##################################################${NC}"
+    echo -e "${BLUE}#                                                #${NC}"
+    echo -e "${BLUE}#        ${BOLD}${CYAN}YURACLOUD WEBHOST - INITIAL SETUP${NC}${BLUE}       #${NC}"
+    echo -e "${BLUE}#            ${WHITE}Professional & Optimized${NC}${BLUE}            #${NC}"
+    echo -e "${BLUE}#                                                #${NC}"
+    echo -e "${BLUE}##################################################${NC}"
     echo ""
-    read -p "Enter Domain (default: localhost): " input_domain
+    echo -e "${YELLOW}[!] First run detected.${NC}"
+    echo -e "${WHITE}Please answer the following questions to configure your server.${NC}"
+    echo ""
+
+    # Fix for Pterodactyl console: print first, then read
+    echo -e "${CYAN}1. Domain Name${NC}"
+    echo -e "Enter your domain (example: myweb.com or localhost)"
+    echo -n "> "
+    read input_domain
     DOMAIN=${input_domain:-localhost}
-    
-    read -p "Enter Port (default: 80): " input_port
+    echo -e "${GREEN}Selected: $DOMAIN${NC}\n"
+
+    echo -e "${CYAN}2. Server Port${NC}"
+    echo -e "Enter the port from your allocation (example: 80 or 25565)"
+    echo -n "> "
+    read input_port
     PORT=${input_port:-80}
-    
-    read -p "Use SSL? (true/false, default: false): " input_ssl
+    echo -e "${GREEN}Selected: $PORT${NC}\n"
+
+    echo -e "${CYAN}3. SSL Support${NC}"
+    echo -e "Do you want to enable SSL? (type 'true' or 'false')"
+    echo -n "> "
+    read input_ssl
     SSL=${input_ssl:-false}
-    
+    echo -e "${GREEN}Selected: $SSL${NC}\n"
+
     auto_detect
-    echo -e "Detected Web Type: ${ORANGE}$WEB_TYPE${NC}"
-    read -p "Override Web Type? (html/php/nodejs/nextjs/laravel, enter to skip): " input_type
+    echo -e "${CYAN}4. Web Framework${NC}"
+    echo -e "Detected: ${ORANGE}$WEB_TYPE${NC}"
+    echo -e "Press Enter to keep detected, or type (html/php/nodejs/nextjs/laravel)"
+    echo -n "> "
+    read input_type
     WEB_TYPE=${input_type:-$WEB_TYPE}
+    echo -e "${GREEN}Selected: $WEB_TYPE${NC}\n"
 
     cat <<EOF > "$CONF_FILE"
 LANG=EN
@@ -60,8 +84,12 @@ PORT=$PORT
 SSL=$SSL
 WEB_TYPE=$WEB_TYPE
 EOF
-    echo -e "${GREEN}Setup saved! Restarting...${NC}"
-    sleep 2
+
+    echo -e "${BLUE}==================================================${NC}"
+    echo -e "      ${BOLD}${GREEN}CONGRATULATIONS! SETUP COMPLETE!${NC}"
+    echo -e "${BLUE}==================================================${NC}"
+    echo -e "${WHITE}Your server is now starting with YuraCloud optimization.${NC}"
+    sleep 3
 }
 
 if [[ ! -f "$CONF_FILE" ]]; then
@@ -154,7 +182,8 @@ start_web
 # --- Loop ---
 while true; do
     show_menu
-    read -p "yuracloud@webhost > " choice
+    echo -n "yuracloud@webhost > "
+    read choice
     case $choice in
         1) top -b -n 1 | head -n 15; read -p "Enter..." ;;
         2) chmod -R 755 /home/container/files; echo "Done." ;;
@@ -162,7 +191,7 @@ while true; do
         4) start_web ;;
         5) pkill nginx php node; echo "Stopped." ;;
         6) echo "1. Nginx 2. PHP 3. Node"; read -p "> " l; [ "$l" == "1" ] && tail -n 20 /home/container/logs/error.log; [ "$l" == "2" ] && tail -n 20 /home/container/logs/php-fpm.log; [ "$l" == "3" ] && tail -n 20 /home/container/logs/node.log; read -p "Enter..." ;;
-        9) rm "$CONF_FILE"; echo "Config deleted. Restart to setup."; exit 0 ;;
+        9) rm "$CONF_FILE"; echo "Config deleted. Restarting..."; exit 0 ;;
         11) echo "1. EN 2. ID 3. KR 4. JP"; read -p "> " l; [ "$l" == "1" ] && L=EN; [ "$l" == "2" ] && L=ID; [ "$l" == "3" ] && L=KR; [ "$l" == "4" ] && L=JP;
             sed -i "s/LANG=.*/LANG=$L/" "$CONF_FILE"; source "$CONF_FILE"; clear ;;
         0) exit 0 ;;
