@@ -6,7 +6,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: yuracloud/opti-ghcr
+  IMAGE_NAME: yuracloud/webhost
 
 jobs:
   build-and-push:

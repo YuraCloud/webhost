@@ -10,7 +10,7 @@
     "description": "A comprehensive web hosting egg supporting PHP, Node.js, and more with an interactive management console.",
     "features": null,
     "docker_images": {
-        "ghcr.io/yuracloud/opti-ghcr:latest": "ghcr.io/yuracloud/opti-ghcr:latest"
+        "ghcr.io/yuracloud/webhost:latest": "ghcr.io/yuracloud/webhost:latest"
     },
     "file_denylist": [],
     "startup": "bash /entrypoint.sh",
